@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,6 +11,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private LayerMask _groundLayer;
     [SerializeField] private float _jumpCancelRate = 500f;
     [SerializeField] private float _cayoteeTime = .2f;
+    [SerializeField] private float _jumpBuffer = .1f;
 
     [Header("Movement Settings")]
     [SerializeField] private float _speed = 10f;
@@ -25,6 +27,7 @@ public class PlayerMovement : MonoBehaviour
     private float _jumpForce;
     private float _jumpTime;
     private float _cayoteeCounter;
+    private float _jumpBufferCounter;
 
     private bool _jumping;
     private bool _jumpCancelled;
@@ -35,7 +38,7 @@ public class PlayerMovement : MonoBehaviour
     private void Awake()
     {
         _controls = new CheeseUp();
-        _controls.Player.Jump.performed += ctx => Jump();
+        _controls.Player.Jump.started += ctx => _jumpBufferCounter = _jumpBuffer;
         _controls.Player.Jump.canceled += ctx => _jumpCancelled = true;
 
         _rb = GetComponent<Rigidbody2D>();
@@ -74,10 +77,12 @@ public class PlayerMovement : MonoBehaviour
         if (IsDead) { return; }
 
         MoveHorizontaly();
+        Jump();
         WhileJumping();
         Flip();
         UpdateAnimation();
         UpdateCayoteeTime();
+        UpdateJumpBufferCounter();
     }
 
     private void OnMove(InputValue value) => _dirX = value.Get<Vector2>().x;
@@ -106,12 +111,14 @@ public class PlayerMovement : MonoBehaviour
 
     private void Jump()
     {
-        if (_cayoteeCounter > 0f)
+        if (_cayoteeCounter > 0f && _jumpBufferCounter > 0f)
         {
+            AudioManager.Instance.PlayJumpSound();
             _rb.AddForce(new Vector2(0f, _jumpForce), ForceMode2D.Impulse);
             _jumping = true;
             _jumpCancelled = false;
             _jumpTime = 0f;
+            _jumpBufferCounter = 0f;
         }
     }
 
@@ -129,16 +136,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void Flip()
     {
-        if (_dirX > 0f && !_isFacingRight)
-        {
-            _renderer.flipX = false;
-            _isFacingRight = true;
-        }
-        else if (_dirX < 0f && _isFacingRight)
-        {
-            _renderer.flipX = true;
-            _isFacingRight = false;
-        }
+        if (_dirX != 0) { _renderer.flipX = _dirX < 0; }
     }
 
     private void UpdateAnimation()
@@ -173,6 +171,13 @@ public class PlayerMovement : MonoBehaviour
         {
             _cayoteeCounter -= Time.deltaTime;
         }
+    }
+
+    private void UpdateJumpBufferCounter()
+    {
+        if (_jumpBufferCounter < 1f) { return; }
+
+        _jumpBufferCounter -= Time.deltaTime;
     }
 
     private bool IsGrounded() => Physics2D.BoxCast(_coll.bounds.center, _coll.bounds.size, 0f, Vector2.down, .1f, _groundLayer);

@@ -11,6 +11,7 @@ public class Finish : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player") && !_isFinished)
         {
+            AudioManager.Instance.PlayPickUpCheeseSound();
             StartCoroutine(LoadNextScene());
             _isFinished = true;
         }

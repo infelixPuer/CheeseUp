@@ -18,6 +18,7 @@ public class PlayerCollision : MonoBehaviour
 
         if (collision.gameObject.CompareTag("Spikes") && !_pm.IsDead)
         {
+            AudioManager.Instance.PlayDeathSound();
             _pm.IsDead = true;
             StartCoroutine(RestartLevel());
         }
